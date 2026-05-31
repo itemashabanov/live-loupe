@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode (just in case)
+*.xcodeproj/xcuserdata/
+xcuserdata/
+DerivedData/
+
+# Claude Code local settings (personal paths / permissions — do not publish)
+.claude/settings.local.json
+
+# Local temp / test artifacts
+.tmp-preview-test/
+
+# App build outputs
+*.app
+*.zip
