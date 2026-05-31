@@ -4,9 +4,12 @@
 
 Live Loupe is a tiny macOS utility (plus an optional Lightroom Classic plugin) that turns a local preview-export folder into an iPhone-friendly gallery on the same Wi-Fi network. Your Mac serves the selected folder directly to your phone; photos never leave your network.
 
+[![website](https://img.shields.io/badge/website-itemashabanov.github.io-0A84FF)](https://itemashabanov.github.io/live-loupe/)
 ![platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
 ![swift](https://img.shields.io/badge/Swift-6.0-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
+
+🌐 **Website:** [itemashabanov.github.io/live-loupe](https://itemashabanov.github.io/live-loupe/)
 
 ---
 
