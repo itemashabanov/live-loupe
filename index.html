@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Loupe — see your Lightroom edits on iPhone, instantly</title>
+<meta name="description" content="Live Loupe is a tiny macOS companion for Lightroom Classic. Scan a QR code and preview your edits on iPhone over local Wi-Fi — no cloud sync, no manual exports, no subscription.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap">
+<link rel="stylesheet" href="loupe.css">
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<nav class="nav">
+  <a class="brand" href="#top">
+    <span class="logo" style="background:var(--accent)">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15 15l5 5"></path></svg>
+    </span>
+    Live Loupe
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#modes">Modes</a>
+    <a href="#features">Features</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <div class="nav-actions">
+    <a class="btn btn-ghost btn-sm" href="https://github.com/itemashabanov/live-loupe" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path></svg>
+      GitHub
+    </a>
+    <a class="btn btn-primary btn-sm" href="https://github.com/itemashabanov/live-loupe/releases/latest/download/Live.Loupe.Kit.zip" target="_blank" rel="noopener">Download</a>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="hero-bg"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-head">
+      <span class="eyebrow">macOS · Lightroom Classic companion</span>
+      <h1>See your edits on the screen<br>they'll <span class="accent-text">actually</span> live on.</h1>
+      <p class="lead">Live Loupe streams your Lightroom Classic previews straight to your iPhone over local Wi&#8209;Fi. No cloud sync, no manual exports, no subscription — scan a QR code and look.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://github.com/itemashabanov/live-loupe/releases/latest/download/Live.Loupe.Kit.zip" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 20h14"></path></svg>
+          Download for macOS
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/itemashabanov/live-loupe" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="hero-meta">
+        <span>Free &amp; open&#8209;source</span><span class="dot"></span>
+        <span>Apple Silicon &amp; Intel</span><span class="dot"></span>
+        <span>macOS 14+</span>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <!-- Variant A: Mac window + iPhone -->
+      <div class="heroA">
+        <div class="mac-shot">
+          <img src="img/app-dark-qr.png" alt="Live Loupe macOS app showing a QR code ready to connect">
+        </div>
+        <div class="iphone-wrap">
+          <div class="iphone">
+            <div class="iphone-island"></div>
+            <div class="iphone-screen">
+              <div class="iphone-statusbar"><span>9:41</span><span>local Wi&#8209;Fi</span></div>
+              <div class="ip-gallery-head">
+                <div class="t">Live Loupe</div>
+                <div class="s">macbook.local:8765</div>
+              </div>
+              <div class="ip-grid">
+                <div class="ph ph-1 wide"></div>
+                <div class="ph ph-3"></div>
+                <div class="ph ph-2"></div>
+                <div class="ph ph-5"></div>
+                <div class="ph ph-4"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variant B: live-sync scene -->
+      <div class="heroB">
+        <div class="scene">
+          <span class="hand hand-edit">you nudge it here
+            <svg class="hand-arrow" viewBox="0 0 64 46" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8c16 6 26 18 30 32"></path><path d="M24 38l11 4 1-12"></path></svg>
+          </span>
+          <span class="hand hand-land">
+            <svg class="hand-arrow" viewBox="0 0 64 46" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M60 8c-16 6-26 18-30 32"></path><path d="M40 38l-11 4-1-12"></path></svg>
+            …lands here, live
+          </span>
+
+          <!-- generic editor (not Adobe's UI) -->
+          <div class="scene-mac macwin">
+            <div class="mac-bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="mac-title mono">Lightroom Classic — Develop</span></div>
+            <div class="editor2">
+              <div class="editor2-photo"><div class="ph ph-1 grade grade-mac"></div></div>
+              <div class="editor2-side">
+                <div class="erow"><span class="ek-label">Exposure</span><span class="etrack"><i class="ek knobA"></i></span></div>
+                <div class="erow"><span class="ek-label">Contrast</span><span class="etrack"><i class="ek knobB"></i></span></div>
+                <div class="erow"><span class="ek-label">Vibrance</span><span class="etrack"><i class="ek knobC"></i></span></div>
+                <div class="erow"><span class="ek-label">Warmth</span><span class="etrack"><i class="ek knobD"></i></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- relay: data jumps from Mac into the phone -->
+          <span class="relay">
+            <span class="relay-beam"><span class="beam-dot"></span></span>
+            <span class="relay-ring"></span>
+            <span class="relay-core">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"></path><path d="M8 15.5a5.5 5.5 0 0 1 8 0"></path><circle cx="12" cy="19" r="1.1" fill="#fff" stroke="none"></circle></svg>
+            </span>
+          </span>
+
+          <!-- iPhone mirror, overlapping the Mac -->
+          <div class="scene-phone">
+            <div class="iphone">
+              <div class="iphone-island"></div>
+              <div class="iphone-screen">
+                <div class="iphone-statusbar"><span>9:41</span><span class="live-pill"><i></i>LIVE</span></div>
+                <div class="phone-photo"><div class="ph ph-1 grade grade-phone"></div></div>
+                <div class="phone-foot mono">macbook.local:8765</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="section" id="how">
+  <div class="wrap">
+    <span class="eyebrow reveal">Three steps</span>
+    <h2 class="h-section reveal" style="margin-top:16px;max-width:14ch">From the develop module to your pocket.</h2>
+    <div class="steps">
+      <div class="step reveal">
+        <span class="num">01</span>
+        <h3>Edit in Lightroom</h3>
+        <p>Keep working in Lightroom Classic exactly as you do today. Nothing about your catalog or workflow changes.</p>
+        <div class="step-vis">
+          <div class="macwin" style="width:78%">
+            <div class="mac-bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="ph ph-3" style="height:70px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <span class="num">02</span>
+        <h3>Scan the QR</h3>
+        <p>Open Live Loupe and point your iPhone camera at the code. You're connected over local Wi&#8209;Fi in seconds.</p>
+        <div class="step-vis">
+          <div class="qr-card" style="padding:9px"><canvas class="qr" data-size="92"></canvas></div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <span class="num">03</span>
+        <h3>Judge on real glass</h3>
+        <p>Color, contrast, sharpness and feel — checked on the iPhone screen where your photos are most likely to be seen.</p>
+        <div class="step-vis">
+          <div class="iphone" style="width:64px;border-radius:14px;padding:4px">
+            <div class="iphone-screen" style="border-radius:11px">
+              <div class="ph ph-5" style="flex:1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODES ================= -->
+<section class="section" id="modes" style="background:var(--bg-2);border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)">
+  <div class="wrap">
+    <span class="eyebrow reveal">Two ways to share</span>
+    <h2 class="h-section reveal" style="margin-top:16px;max-width:18ch">Pick the right preview for the moment.</h2>
+    <div class="modes">
+      <div class="mode-card export reveal">
+        <span class="tag">Export</span>
+        <h3>Export Preview</h3>
+        <p>A Lightroom plug&#8209;in drops JPEG previews into a watched folder. Live Loupe serves them to your phone as a tidy, tappable gallery — perfect for reviewing a finished set.</p>
+        <div class="mode-flags">
+          <span class="flag">Folder gallery</span>
+          <span class="flag">Full quality</span>
+          <span class="flag">Batch review</span>
+        </div>
+        <div class="mode-vis">
+          <div class="ip-grid" style="grid-template-columns:repeat(3,1fr);gap:6px;padding:12px;height:100%">
+            <div class="ph ph-1"></div><div class="ph ph-2"></div><div class="ph ph-3"></div>
+            <div class="ph ph-4"></div><div class="ph ph-5"></div><div class="ph ph-6"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mode-card live reveal">
+        <span class="tag">Live</span>
+        <h3>Live Screen Preview</h3>
+        <p>Stream the current Lightroom view — or just a cropped region — live to your iPhone. Adjust on the Mac and watch the phone update as you work, no exporting in between.</p>
+        <div class="mode-flags">
+          <span class="flag">Real-time stream</span>
+          <span class="flag">Crop to region</span>
+          <span class="flag">Quality · Balanced · Battery</span>
+        </div>
+        <div class="mode-vis" style="display:grid;place-items:center">
+          <div class="ph ph-5" style="position:absolute;inset:0"></div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.28)"></div>
+          <div style="position:relative;display:flex;align-items:center;gap:10px;color:#fff;font-weight:600;font-size:14px">
+            <span style="width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 var(--accent);animation:beam 2s infinite"></span>
+            Streaming · 720px
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section class="section" id="features">
+  <div class="wrap">
+    <span class="eyebrow reveal">Everything in the menu bar</span>
+    <h2 class="h-section reveal" style="margin-top:16px;max-width:16ch">Small app. Surprisingly complete.</h2>
+    <div class="features-grid reveal">
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3M21 14v.01M21 21v-3M17 21h.01"></path></svg></span>
+        <h3>QR pairing</h3>
+        <p>Connect any iPhone in seconds — scan and the gallery opens right in Safari.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"></path><path d="M8.5 16a5 5 0 0 1 7 0"></path><circle cx="12" cy="19" r="1"></circle></svg></span>
+        <h3>Smart local address</h3>
+        <p>Auto-picks a friendly URL like <span class="mono">macbook.local:8765</span>, port included.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"></path></svg></span>
+        <h3>Choose your network</h3>
+        <p>Multiple interfaces? Pick the best local address from a simple list.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M12 11v5M9.5 13.5 12 11l2.5 2.5"></path></svg></span>
+        <h3>Drag &amp; drop folders</h3>
+        <p>Drop a folder of previews onto the window and you're instantly sharing.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h6v6H5z"></path><path d="M13 7h2a2 2 0 0 1 2 2v0a2 2 0 0 0 2 2h0M13 13h6v6h-6z"></path></svg></span>
+        <h3>Lightroom plug&#8209;in</h3>
+        <p>Launch previews straight from the Lightroom Classic export dialog.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg></span>
+        <h3>Stream profiles</h3>
+        <p>Quality, Balanced or Battery — tune resolution and compression to the moment.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"></path><path d="M18 22V8a2 2 0 0 0-2-2H2"></path></svg></span>
+        <h3>Crop to region</h3>
+        <p>Set the exact image area for live screen mode — send only what matters.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"></path><circle cx="17" cy="18" r="2"></circle></svg></span>
+        <h3>Export control</h3>
+        <p>Dial in JPEG quality, long&#8209;edge size and metadata cleanup before sharing.</p>
+      </div>
+      <div class="feature">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"></path></svg></span>
+        <h3>Light, Dark &amp; System</h3>
+        <p>A minimal, native macOS interface that follows your system appearance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRIVACY ================= -->
+<section class="section privacy" id="privacy">
+  <div class="wrap privacy-inner">
+    <div class="reveal">
+      <span class="eyebrow">Local by design</span>
+      <h2 style="margin-top:16px">Your photos never leave your Wi&#8209;Fi.</h2>
+      <p class="lead">Live Loupe runs a small local HTTP server on your Mac. Your iPhone opens it over the same network. Nothing is uploaded, nothing is tracked, nothing waits on a sync — it's a companion for Lightroom, not another cloud account.</p>
+      <div class="privacy-chips">
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6z"></path></svg>No cloud</span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>No account</span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"></path></svg>No subscription</span>
+      </div>
+    </div>
+    <div class="net-card reveal">
+      <div class="net-row">
+        <span class="net-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg></span>
+        <div><div class="nm">Mac · local server</div><div class="sub">Serves previews on your machine</div></div>
+        <span class="addr mono">:8765</span>
+      </div>
+      <div class="net-row">
+        <span class="net-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"></path><path d="M8.5 16a5 5 0 0 1 7 0"></path><circle cx="12" cy="19" r="1"></circle></svg></span>
+        <div><div class="nm">Local Wi&#8209;Fi</div><div class="sub">Same network, no internet hop</div></div>
+        <span class="addr">private</span>
+      </div>
+      <div class="net-row">
+        <span class="net-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="3"></rect><path d="M11 18h2"></path></svg></span>
+        <div><div class="nm">iPhone · Safari</div><div class="sub">Just opens a web page — nothing to install</div></div>
+        <span class="addr">view only</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PLUGIN ================= -->
+<section class="section" id="plugin">
+  <div class="wrap plugin-inner">
+    <div class="plugin-shot order-first reveal">
+      <img src="img/app-dark-idle.png" alt="Live Loupe macOS interface, ready to connect">
+    </div>
+    <div class="reveal">
+      <span class="eyebrow">Lightroom Classic plug&#8209;in</span>
+      <h2 class="h-section" style="margin-top:16px;font-size:clamp(28px,3.6vw,44px)">Starts in Lightroom. Stays out of your way.</h2>
+      <p class="lead" style="margin-top:18px">Install the Live Loupe plug&#8209;in for Lightroom Classic and trigger previews right from the export dialog. Choose Export or Live, set a stream profile, and your phone keeps up as you edit.</p>
+      <div class="privacy-chips" style="margin-top:24px">
+        <span class="chip">Export-dialog trigger</span>
+        <span class="chip">Adjustable live size &amp; quality</span>
+        <span class="chip">Metadata cleanup</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SHOWCASE ================= -->
+<section class="section" id="showcase" style="background:var(--bg-2);border-top:1px solid var(--hairline)">
+  <div class="wrap">
+    <span class="eyebrow reveal">A closer look</span>
+    <h2 class="h-section reveal" style="margin-top:16px;max-width:16ch">Native macOS, down to the last toggle.</h2>
+    <div class="shots">
+      <div class="shot reveal">
+        <div class="cap"><h3>Ready to connect</h3><span>Dark</span></div>
+        <img src="img/app-dark-idle.png" alt="Live Loupe idle state in dark mode">
+      </div>
+      <div class="shot reveal">
+        <div class="cap"><h3>Scan &amp; stream</h3><span>QR · Live</span></div>
+        <img src="img/app-dark-qr.png" alt="Live Loupe showing a QR code for the iPhone">
+      </div>
+      <div class="shot reveal">
+        <div class="cap"><h3>Export &amp; metadata</h3><span>Settings</span></div>
+        <img src="img/app-light-settings.png" alt="Live Loupe settings: JPEG quality, long edge, metadata cleanup">
+      </div>
+      <div class="shot reveal">
+        <div class="cap"><h3>Light theme</h3><span>Light</span></div>
+        <img src="img/app-light-qr.png" alt="Live Loupe in light mode with a QR code">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="display:block;text-align:center">Questions</span>
+    <h2 class="h-section reveal" style="margin-top:16px;text-align:center">Good to know.</h2>
+    <div class="faq">
+      <div class="faq-item">
+        <button class="faq-q">Does it upload my photos anywhere?<span class="pm"></span></button>
+        <div class="faq-a"><p>No. Live Loupe runs a local HTTP server on your Mac and your iPhone connects over the same Wi&#8209;Fi network. Your images stay on your machine and your local network — nothing is sent to the cloud or to us.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Do I need an Adobe cloud subscription?<span class="pm"></span></button>
+        <div class="faq-a"><p>No. Live Loupe is fully local and works alongside Lightroom Classic without any Adobe cloud sync. It's a companion tool, not a service.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Does my iPhone need an app?<span class="pm"></span></button>
+        <div class="faq-a"><p>No. Your phone just opens a web page in Safari after scanning the QR code. There's nothing to install on the iPhone side.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span>What if <span class="mono">macbook.local</span> doesn't resolve?</span><span class="pm"></span></button>
+        <div class="faq-a"><p>Pick another network address from the list in the app, or set a custom port. Live Loupe surfaces every local interface so you can choose one that works on your network.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Which Macs are supported?<span class="pm"></span></button>
+        <div class="faq-a"><p>Apple Silicon and Intel Macs running macOS 14 Sonoma and later. Live screen preview asks for the standard Screen Recording permission the first time you use it.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Is it really free?<span class="pm"></span></button>
+        <div class="faq-a"><p>Yes. Live Loupe is free and open&#8209;source on GitHub. No subscription, no account, no catch.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA BAND ================= -->
+<section class="section cta-band">
+  <div class="wrap">
+    <div class="panel reveal">
+      <h2>Stop guessing on the desktop.</h2>
+      <p class="lead">Download Live Loupe, scan once, and judge every edit on the screen that matters.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://github.com/itemashabanov/live-loupe/releases/latest/download/Live.Loupe.Kit.zip" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 20h14"></path></svg>
+          Download for macOS
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/itemashabanov/live-loupe" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+      <p style="margin-top:18px;font-size:13px;color:var(--text-3)">Free &amp; open&#8209;source · Apple Silicon &amp; Intel · macOS 14+</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <a class="brand" href="#top">
+        <span class="logo" style="background:var(--accent)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15 15l5 5"></path></svg>
+        </span>
+        Live Loupe
+      </a>
+      <p>A local companion for Lightroom Classic. Preview your edits on iPhone over Wi&#8209;Fi — privacy-friendly and fast.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#how">How it works</a>
+        <a href="#modes">Modes</a>
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="https://github.com/itemashabanov/live-loupe" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/itemashabanov/live-loupe/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/itemashabanov/live-loupe/issues" target="_blank" rel="noopener">Issues</a>
+        <a href="#faq">FAQ</a>
+      </div>
+    </div>
+  </div>
+  <div class="wrap footer-base">
+    <span>© 2026 Live Loupe · free &amp; open&#8209;source</span>
+    <span style="display:inline-flex;align-items:center;gap:9px">Made by a photographer — <a class="signature" href="https://www.instagram.com/thecapturecrafter/" target="_blank" rel="noopener">The Capture Crafter</a></span>
+  </div>
+</footer>
+
+<script src="qrcode.js"></script>
+<script src="loupe.js"></script>
+
+</body>
+</html>
