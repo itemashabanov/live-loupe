@@ -133,9 +133,25 @@ extension GalleryServer {
         let fallbackTimer = 0;
         let configTimer = 0;
 
+        function followModeRedirect(response) {
+          const redirectPath = response.headers.get('X-Live-Loupe-Redirect');
+          if (redirectPath) {
+            window.location.replace(redirectPath);
+            return true;
+          }
+
+          if (response.redirected && response.url) {
+            window.location.replace(response.url);
+            return true;
+          }
+
+          return false;
+        }
+
         async function loadConfig() {
           try {
             const response = await fetch('/screen-config.json', { cache: 'no-store' });
+            if (followModeRedirect(response)) return;
             if (!response.ok) throw new Error('config');
             const nextConfig = await response.json();
 

@@ -247,6 +247,21 @@ extension GalleryServer {
           return items.map((item) => `${item.id}:${item.modified}:${item.size}`).join('|');
         }
 
+        function followModeRedirect(response) {
+          const redirectPath = response.headers.get('X-Live-Loupe-Redirect');
+          if (redirectPath) {
+            window.location.replace(redirectPath);
+            return true;
+          }
+
+          if (response.redirected && response.url) {
+            window.location.replace(response.url);
+            return true;
+          }
+
+          return false;
+        }
+
         function render(items) {
           const liveEntry = items.find((entry) => entry.name === LIVE_FILE || entry.relativePath === LIVE_FILE);
           if (liveEntry) {
@@ -319,6 +334,8 @@ extension GalleryServer {
         async function refresh() {
           try {
             const response = await fetch('/manifest.json', { cache: 'no-store' });
+            if (followModeRedirect(response)) return;
+            if (!response.ok) throw new Error('manifest');
             const items = await response.json();
             const updatedSignature = nextSignature(items);
 

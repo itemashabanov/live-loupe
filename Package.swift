@@ -14,6 +14,11 @@ let package = Package(
         .executableTarget(
             name: "LiveLoupe",
             path: "Sources/LiveLoupe"
+        ),
+        .testTarget(
+            name: "LiveLoupeTests",
+            dependencies: ["LiveLoupe"],
+            path: "Tests/LiveLoupeTests"
         )
     ]
 )

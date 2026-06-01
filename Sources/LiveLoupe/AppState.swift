@@ -145,6 +145,7 @@ final class AppState: ObservableObject {
     @Published private(set) var status: ServerStatus = .stopped
     @Published private(set) var networkAddress: String?
     @Published private(set) var networkEndpoints: [LocalNetworkEndpoint] = []
+    @Published private(set) var activeVPNInterfaces: [String] = []
     @Published private(set) var connectionTargets: [ConnectionTarget] = []
     @Published var selectedTargetID: String?
     @Published var exportSettings: ExportSettings {
@@ -156,6 +157,11 @@ final class AppState: ObservableObject {
         didSet {
             defaults.set(previewMode.rawValue, forKey: previewModeKey)
             refreshScreenCaptureAccess()
+            persistRuntimeState()
+
+            if oldValue != previewMode, status == .running, !isApplyingLaunchOptions {
+                restart()
+            }
         }
     }
     @Published private(set) var localHostname: String?
@@ -184,7 +190,12 @@ final class AppState: ObservableObject {
         screenCropRect != LightroomScreenCapture.fullCropRect
     }
 
+    var hasActiveVPNConnection: Bool {
+        !activeVPNInterfaces.isEmpty
+    }
+
     private var server: GalleryServer?
+    private var isApplyingLaunchOptions = false
 
     private let defaults = UserDefaults.standard
     private let folderKey = "previewFolderPath"
@@ -236,6 +247,8 @@ final class AppState: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.start()
             }
+        } else {
+            persistRuntimeState()
         }
     }
 
@@ -312,7 +325,8 @@ final class AppState: ObservableObject {
 
         do {
             status = .starting
-            let newServer = try GalleryServer(folderURL: servingFolderURL, port: UInt16(port)) { [weak self] state in
+            persistRuntimeState()
+            let newServer = try GalleryServer(folderURL: servingFolderURL, port: UInt16(port), mode: previewMode) { [weak self] state in
                 Task { @MainActor in
                     self?.handleServerState(state)
                 }
@@ -332,11 +346,20 @@ final class AppState: ObservableObject {
         server?.stop()
         server = nil
         status = .stopped
+        persistRuntimeState()
     }
 
     func restart() {
         stop()
         start()
+    }
+
+    func prepareForTermination() {
+        Diagnostics.log("app terminate requested")
+        server?.stop()
+        server = nil
+        status = .stopped
+        persistRuntimeState()
     }
 
     func copyURLToPasteboard() {
@@ -347,6 +370,51 @@ final class AppState: ObservableObject {
 
     func selectTarget(id: String) {
         selectedTargetID = id
+    }
+
+    func refreshNetworkStatus() {
+        refreshNetworkAddresses()
+    }
+
+    func applyLaunchURL(_ url: URL) {
+        guard let launchOptions = LaunchOptions.from(url: url) else {
+            Diagnostics.log("launch url ignored: \(url.absoluteString)")
+            return
+        }
+
+        Diagnostics.log("launch url received mode=\(launchOptions.previewMode?.rawValue ?? "nil") port=\(launchOptions.port.map(String.init) ?? "nil") start=\(launchOptions.shouldStartServer)")
+        applyLaunchOptions(launchOptions)
+    }
+
+    func applyLaunchOptions(_ launchOptions: LaunchOptions) {
+        isApplyingLaunchOptions = true
+        defer { isApplyingLaunchOptions = false }
+
+        if let launchPreviewMode = launchOptions.previewMode {
+            previewMode = launchPreviewMode
+        }
+
+        if let launchPort = launchOptions.port {
+            port = launchPort
+            defaults.set(launchPort, forKey: portKey)
+        }
+
+        if let launchFolderURL = launchOptions.folderURL {
+            folderURL = launchFolderURL
+            defaults.set(launchFolderURL.path, forKey: folderKey)
+        }
+
+        refreshNetworkAddresses()
+
+        if launchOptions.shouldStartServer {
+            if status == .running || status == .starting {
+                restart()
+            } else {
+                start()
+            }
+        } else {
+            persistRuntimeState()
+        }
     }
 
     func openURLOnMac() {
@@ -385,6 +453,7 @@ final class AppState: ObservableObject {
 
     private func refreshNetworkAddresses() {
         networkEndpoints = NetworkAddress.ipv4Endpoints()
+        activeVPNInterfaces = NetworkAddress.activeVPNInterfaces()
         networkAddress = networkEndpoints.first?.address
         localHostname = NetworkAddress.localHostname()
         connectionTargets = makeConnectionTargets()
@@ -440,12 +509,15 @@ final class AppState: ObservableObject {
         switch state {
         case .ready:
             status = .running
+            persistRuntimeState()
         case let .failed(message):
             server = nil
             status = .failed(message)
+            persistRuntimeState()
         case .stopped:
             if status != .stopped {
                 status = .stopped
+                persistRuntimeState()
             }
         }
     }
@@ -521,5 +593,34 @@ final class AppState: ObservableObject {
         } catch {
             NSLog("Could not persist Live Loupe export settings: \(error.localizedDescription)")
         }
+    }
+
+    private func persistRuntimeState() {
+        do {
+            let fileURL = Self.runtimeStateFileURL
+            try FileManager.default.createDirectory(
+                at: fileURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+
+            let isRuntimeRunning = status == .running || status == .starting
+            let contents = """
+            mode=\(previewMode.rawValue)
+            running=\(isRuntimeRunning ? "true" : "false")
+            updatedAt=\(Date().timeIntervalSince1970)
+            """
+            try contents.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            NSLog("Could not persist Live Loupe runtime state: \(error.localizedDescription)")
+        }
+    }
+
+    private static var runtimeStateFileURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+
+        return baseURL
+            .appendingPathComponent("Live Loupe", isDirectory: true)
+            .appendingPathComponent("runtime-state.conf")
     }
 }

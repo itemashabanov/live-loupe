@@ -57,6 +57,24 @@ local function shellQuote(value)
   return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
 end
 
+local function urlEncode(value)
+  return tostring(value or ''):gsub("([^%w%-_%.~])", function(character)
+    return string.format("%%%02X", string.byte(character))
+  end)
+end
+
+local function liveLoupeLaunchURL(folder, mode, port)
+  return table.concat({
+    'liveloupe://start?folder=',
+    urlEncode(folder),
+    '&port=',
+    tostring(port or defaultPort),
+    '&mode=',
+    urlEncode(mode or 'export'),
+    '&start=1',
+  })
+end
+
 local function ensureFolder(path)
   if not path or path == '' then
     return nil
@@ -124,6 +142,57 @@ end
 
 local function debugLogSession(message)
   debugLog('--- ' .. message .. ' ---')
+end
+
+local function runtimeStateConfigPath()
+  local folder = LrPathUtils.child(
+    LrPathUtils.getStandardFilePath('home'),
+    'Library/Application Support/Live Loupe'
+  )
+  LrFileUtils.createAllDirectories(folder)
+  return LrPathUtils.child(folder, 'runtime-state.conf')
+end
+
+local function readRuntimeState()
+  local path = runtimeStateConfigPath()
+  local file = io.open(path, 'r')
+  if not file then
+    return nil
+  end
+
+  local state = {}
+  for line in file:lines() do
+    local key, value = tostring(line):match('^%s*([^=]+)%s*=%s*(.-)%s*$')
+    if key and value then
+      state[trim(key)] = trim(value)
+    end
+  end
+  file:close()
+  return state
+end
+
+local function writeRuntimeState(mode, running)
+  local path = runtimeStateConfigPath()
+  local file = io.open(path, 'w')
+  if not file then
+    return
+  end
+
+  file:write('mode=' .. tostring(mode or 'export') .. '\n')
+  file:write('running=' .. (running and 'true' or 'false') .. '\n')
+  file:write('updatedAt=' .. tostring(LrDate.currentTime()) .. '\n')
+  file:close()
+end
+
+local function appAllowsLiveExport()
+  local state = readRuntimeState()
+  if not state then
+    return true, 'missing', 'unknown'
+  end
+
+  local mode = tostring(state.mode or 'export')
+  local running = tostring(state.running or 'true')
+  return mode == 'export' and running ~= 'false', mode, running
 end
 
 local function safeRawMetadata(photo, key)
@@ -486,6 +555,7 @@ function PluginCore.startApp(folder, mode)
 
   local appPath = PluginCore.findAppPath()
   debugLog(string.format('startApp folder=%s appPath=%s port=%d', tostring(folder), tostring(appPath), PluginCore.port()))
+  writeRuntimeState(mode or 'export', true)
   if not appPath then
     local shouldChoose = LrDialogs.confirm(
       'Live Loupe',
@@ -505,28 +575,21 @@ function PluginCore.startApp(folder, mode)
     return false
   end
 
-  local commandParts = {
+  local launchURL = liveLoupeLaunchURL(folder, mode or 'export', PluginCore.port())
+  local activateCommand = table.concat({
     '/usr/bin/open',
-    '-n',
     shellQuote(appPath),
-    '--args',
-    '--folder',
-    shellQuote(folder),
-    '--port',
-    tostring(PluginCore.port()),
-  }
+  }, ' ')
+  local command = table.concat({
+    '/usr/bin/open',
+    '-b',
+    'com.local.liveloupe',
+    shellQuote(launchURL),
+  }, ' ')
 
-  if mode and mode ~= '' then
-    table.insert(commandParts, '--mode')
-    table.insert(commandParts, shellQuote(mode))
-  end
-
-  table.insert(commandParts, '--start')
-
-  local command = table.concat(commandParts, ' ')
-
+  LrTasks.execute(activateCommand)
   LrTasks.execute(command)
-  debugLog('startApp executed open command mode=' .. tostring(mode or 'export'))
+  debugLog('startApp executed url command mode=' .. tostring(mode or 'export') .. ' url=' .. launchURL)
   return true
 end
 
@@ -578,6 +641,7 @@ function PluginCore.startLivePreview()
     local lastQuietPollLogAt = 0
     local lastNoPhotoLogAt = 0
     local lastRenderAttemptAt = 0
+    local lastRuntimeStateCheckAt = 0
     local loopSettings = PluginCore.exportSettings()
     debugLog(string.format(
       'live loop START gen=%d longEdge=%d quality=%.2f jpegQuality=%d',
@@ -618,6 +682,20 @@ function PluginCore.startLivePreview()
       -- yield-safe LrTasks.pcall.
       local ok, message = LrTasks.pcall(function()
         local now = LrDate.currentTime()
+        if now - lastRuntimeStateCheckAt >= 0.5 then
+          lastRuntimeStateCheckAt = now
+          local liveAllowed, runtimeMode, runtimeRunning = appAllowsLiveExport()
+          if not liveAllowed then
+            debugLog(string.format(
+              'live loop STOP app runtime mode=%s running=%s',
+              tostring(runtimeMode),
+              tostring(runtimeRunning)
+            ))
+            state.stop = true
+            return
+          end
+        end
+
         local photo = currentTargetPhoto()
         if not photo then
           if now - lastNoPhotoLogAt >= 2 then
@@ -714,6 +792,7 @@ function PluginCore.startScreenPreview()
   PluginCore.stopLivePreview()
   debugLogSession('screen START requested')
   debugLog(string.format('pluginPath=%s previewFolder=%s port=%d', tostring(_PLUGIN.path), tostring(folder), PluginCore.port()))
+  writeRuntimeState('screen', true)
   PluginCore.startApp(folder, 'screen')
 end
 

@@ -52,6 +52,12 @@ struct ContentView: View {
             ScreenCropEditor()
                 .environmentObject(appState)
         }
+        .onAppear {
+            appState.refreshNetworkStatus()
+        }
+        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
+            appState.refreshNetworkStatus()
+        }
     }
 
     private var appBackground: some View {
@@ -143,9 +149,7 @@ struct ContentView: View {
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 28, height: 28)
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.white)
-                .background(.red, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .buttonStyle(LoupeIconButtonStyle(tint: .red, foreground: .white))
                 .loupeTooltip("Stop the local preview server.")
                 .keyboardShortcut(.defaultAction)
             } else {
@@ -156,9 +160,7 @@ struct ContentView: View {
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 28, height: 28)
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.white)
-                .background(.blue, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .buttonStyle(LoupeIconButtonStyle(tint: .blue, foreground: .white))
                 .opacity(appState.status == .starting ? 0.62 : 1)
                 .disabled((appState.previewMode == .export && appState.folderURL == nil) || appState.status == .starting)
                 .loupeTooltip(appState.status == .starting ? "Starting the local preview server." : "Start the local preview server and generate a QR code.")
@@ -283,12 +285,25 @@ struct ContentView: View {
                 inlinePanelHeader("Network", systemName: "antenna.radiowaves.left.and.right")
                     .frame(width: 86, alignment: .leading)
 
+                if appState.hasActiveVPNConnection {
+                    vpnIndicator
+                }
+
                 portField
                     .frame(width: 78)
 
                 addressPicker
             }
         }
+    }
+
+    private var vpnIndicator: some View {
+        Image(systemName: "exclamationmark.triangle.fill")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.yellow)
+            .frame(width: 22, height: 22)
+            .background(.yellow.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .loupeTooltip("VPN is active (\(appState.activeVPNInterfaces.joined(separator: ", "))). It can block iPhone access to this local preview server.")
     }
 
     private var portField: some View {
@@ -417,7 +432,7 @@ struct ContentView: View {
                     Text("Allow")
                         .font(.system(size: 12, weight: .semibold))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(LoupeTextButtonStyle())
                 .controlSize(.small)
             }
             .controlRow()
@@ -432,7 +447,7 @@ struct ContentView: View {
                 Label(appState.hasScreenCrop ? "Image area" : "Set image area", systemImage: "crop")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(LoupeTextButtonStyle())
 
             if appState.hasScreenCrop {
                 iconButton(systemName: "arrow.counterclockwise", accessibilityLabel: "Reset image area") {
@@ -485,8 +500,7 @@ struct ContentView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .frame(width: 22, height: 22)
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
+            .buttonStyle(LoupeIconButtonStyle(cornerRadius: 6, isSubtle: true))
             .opacity(isFolderPathHovering && appState.folderURL != nil ? 1 : 0)
             .disabled(appState.folderURL == nil)
             .loupeTooltip("Reveal in Finder")
@@ -539,9 +553,7 @@ struct ContentView: View {
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.primary)
-        .iconButtonBackground()
+        .buttonStyle(LoupeIconButtonStyle())
         .accessibilityLabel(accessibilityLabel)
         .loupeTooltip(accessibilityLabel)
     }
@@ -553,9 +565,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, minHeight: 30)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.primary)
-        .iconButtonBackground(cornerRadius: 7)
+        .buttonStyle(LoupeIconButtonStyle(cornerRadius: 7))
         .accessibilityLabel(accessibilityLabel)
         .loupeTooltip(accessibilityLabel)
     }
@@ -612,8 +622,7 @@ private struct ExportSettingsView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .frame(width: 28, height: 28)
                 }
-                .buttonStyle(.borderless)
-                .background(.quaternary, in: Circle())
+                .buttonStyle(LoupeIconButtonStyle(cornerRadius: 14, isSubtle: true))
                 .accessibilityLabel("Close")
             }
 
@@ -842,6 +851,151 @@ private struct MessageRow: View {
     }
 }
 
+private struct LoupeIconButtonStyle: ButtonStyle {
+    var tint: Color?
+    var foreground: Color?
+    var cornerRadius: CGFloat = 7
+    var isSubtle = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        LoupeIconButton(configuration: configuration, tint: tint, foreground: foreground, cornerRadius: cornerRadius, isSubtle: isSubtle)
+    }
+}
+
+private struct LoupeIconButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
+    let configuration: ButtonStyle.Configuration
+    let tint: Color?
+    let foreground: Color?
+    let cornerRadius: CGFloat
+    let isSubtle: Bool
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        configuration.label
+            .foregroundStyle(foreground ?? Color.primary)
+            .background(fillColor, in: shape)
+            .overlay(shape.stroke(strokeColor, lineWidth: 1))
+            .scaleEffect(configuration.isPressed ? 0.93 : (isHovering && isEnabled ? 1.035 : 1))
+            .opacity(isEnabled ? 1 : 0.42)
+            .contentShape(shape)
+            .onHover { isHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+    }
+
+    private var fillColor: Color {
+        if let tint {
+            return tint.opacity(configuration.isPressed ? 0.78 : (isHovering && isEnabled ? 0.92 : 1))
+        }
+
+        if colorScheme == .dark {
+            let base = isSubtle ? 0.08 : 0.13
+            return Color.white.opacity(configuration.isPressed ? base + 0.10 : (isHovering && isEnabled ? base + 0.06 : base))
+        }
+
+        let base = isSubtle ? 0.28 : 0.42
+        return Color.white.opacity(configuration.isPressed ? base + 0.24 : (isHovering && isEnabled ? base + 0.14 : base))
+    }
+
+    private var strokeColor: Color {
+        if tint != nil {
+            return Color.white.opacity(configuration.isPressed ? 0.12 : 0.24)
+        }
+
+        return colorScheme == .dark ? Color.white.opacity(0.22) : Color.white.opacity(0.40)
+    }
+}
+
+private struct LoupeTextButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        LoupeTextButton(configuration: configuration)
+    }
+}
+
+private struct LoupeTextButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
+    let configuration: ButtonStyle.Configuration
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
+
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 10)
+            .frame(minHeight: 28)
+            .background(fillColor, in: shape)
+            .overlay(shape.stroke(strokeColor, lineWidth: 1))
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .opacity(isEnabled ? 1 : 0.45)
+            .contentShape(shape)
+            .onHover { isHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+    }
+
+    private var fillColor: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(configuration.isPressed ? 0.18 : (isHovering && isEnabled ? 0.14 : 0.10))
+        }
+
+        return Color.white.opacity(configuration.isPressed ? 0.70 : (isHovering && isEnabled ? 0.54 : 0.38))
+    }
+
+    private var strokeColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.26)
+    }
+}
+
+private struct LoupeSegmentButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        LoupeSegmentButton(configuration: configuration, isSelected: isSelected)
+    }
+}
+
+private struct LoupeSegmentButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
+    let configuration: ButtonStyle.Configuration
+    let isSelected: Bool
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+
+        configuration.label
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 10)
+            .frame(minWidth: 58, minHeight: 24)
+            .background(fillColor, in: shape)
+            .scaleEffect(configuration.isPressed ? 0.965 : 1)
+            .opacity(isEnabled ? 1 : 0.42)
+            .contentShape(shape)
+            .onHover { isHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+    }
+
+    private var fillColor: Color {
+        if isSelected {
+            return Color.blue.opacity(configuration.isPressed ? 0.78 : (isHovering && isEnabled ? 0.92 : 1))
+        }
+
+        if colorScheme == .dark {
+            return Color.white.opacity(configuration.isPressed ? 0.12 : (isHovering && isEnabled ? 0.08 : 0))
+        }
+
+        return Color.white.opacity(configuration.isPressed ? 0.50 : (isHovering && isEnabled ? 0.30 : 0))
+    }
+}
+
 private struct SegmentButton: View {
     let title: String
     let isSelected: Bool
@@ -854,16 +1008,8 @@ private struct SegmentButton: View {
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.86)
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
-                .padding(.horizontal, 10)
-                .frame(minWidth: 58, minHeight: 24)
-                .background(
-                    isSelected ? Color.blue : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LoupeSegmentButtonStyle(isSelected: isSelected))
         .loupeTooltip(helpText)
         .accessibilityLabel(title)
     }

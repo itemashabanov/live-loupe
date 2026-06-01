@@ -19,7 +19,15 @@ enum NetworkAddress {
         ipv4Endpoints().first?.address
     }
 
+    static func activeVPNInterfaces() -> [String] {
+        interfaceNames().filter(isVPNInterface).sorted()
+    }
+
     static func ipv4Endpoints() -> [LocalNetworkEndpoint] {
+        ipv4Endpoints(excludingVPN: true)
+    }
+
+    private static func ipv4Endpoints(excludingVPN: Bool) -> [LocalNetworkEndpoint] {
         var interfaces: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&interfaces) == 0, let firstInterface = interfaces else {
             return []
@@ -40,7 +48,7 @@ enum NetworkAddress {
             }
 
             let name = String(cString: interface.ifa_name)
-            guard !name.hasPrefix("utun"),
+            guard !(excludingVPN && isVPNInterface(name)),
                   !name.hasPrefix("awdl"),
                   !name.hasPrefix("llw"),
                   !name.hasPrefix("bridge") else {
@@ -84,6 +92,39 @@ enum NetworkAddress {
 
             return leftPriority < rightPriority
         }
+    }
+
+    private static func interfaceNames() -> Set<String> {
+        var interfaces: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&interfaces) == 0, let firstInterface = interfaces else {
+            return []
+        }
+
+        defer { freeifaddrs(interfaces) }
+
+        var names = Set<String>()
+        for pointer in sequence(first: firstInterface, next: { $0.pointee.ifa_next }) {
+            let interface = pointer.pointee
+            let flags = Int32(interface.ifa_flags)
+
+            guard flags & IFF_UP == IFF_UP,
+                  flags & IFF_LOOPBACK == 0,
+                  interface.ifa_addr.pointee.sa_family == UInt8(AF_INET) else {
+                continue
+            }
+
+            names.insert(String(cString: interface.ifa_name))
+        }
+
+        return names
+    }
+
+    private static func isVPNInterface(_ name: String) -> Bool {
+        name.hasPrefix("utun")
+            || name.hasPrefix("tun")
+            || name.hasPrefix("tap")
+            || name.hasPrefix("ppp")
+            || name.hasPrefix("ipsec")
     }
 
     private static func priority(for endpoint: LocalNetworkEndpoint) -> Int {

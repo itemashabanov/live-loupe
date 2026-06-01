@@ -20,6 +20,7 @@ enum GalleryServerError: LocalizedError {
     case invalidRequest
     case forbiddenPath
     case fileNotFound
+    case routeUnavailable(PreviewMode)
 
     var errorDescription: String? {
         switch self {
@@ -31,19 +32,29 @@ enum GalleryServerError: LocalizedError {
             "Requested path is outside the preview folder."
         case .fileNotFound:
             "File not found."
+        case let .routeUnavailable(mode):
+            "This route is disabled while \(mode.title) mode is active."
         }
     }
+}
+
+enum GalleryRouteDecision: Equatable {
+    case allowed
+    case redirect(String)
+    case unavailable
 }
 
 final class GalleryServer: @unchecked Sendable {
     private let folderURL: URL
     private let port: UInt16
+    private let mode: PreviewMode
     private let onStateChange: @Sendable (GalleryServerState) -> Void
     private let queue = DispatchQueue(label: "lr-phone-preview.server")
     private let screenQueue = DispatchQueue(label: "lr-phone-preview.screen", qos: .userInitiated)
     private let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "webp", "heic", "heif", "tif", "tiff"]
     private let livePreviewFileName = "__lr_live_preview.jpg"
     private var listener: NWListener?
+    private var activeConnections: [ObjectIdentifier: NWConnection] = [:]
     private var lastLoggedLiveManifestSignature: String?
     private var screenFrameCountSinceLog = 0
     private var lastScreenLogDate = Date.distantPast
@@ -53,6 +64,7 @@ final class GalleryServer: @unchecked Sendable {
     init(
         folderURL: URL,
         port: UInt16,
+        mode: PreviewMode = .export,
         onStateChange: @escaping @Sendable (GalleryServerState) -> Void = { _ in }
     ) throws {
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
@@ -61,13 +73,14 @@ final class GalleryServer: @unchecked Sendable {
 
         self.folderURL = folderURL.standardizedFileURL
         self.port = UInt16(nwPort.rawValue)
+        self.mode = mode
         self.onStateChange = onStateChange
     }
 
     func start() throws {
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
-        Diagnostics.log("listener start requested folder=\(folderURL.path) port=\(port)")
+        Diagnostics.log("listener start requested folder=\(folderURL.path) port=\(port) mode=\(mode.rawValue)")
 
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw GalleryServerError.invalidPort
@@ -94,12 +107,34 @@ final class GalleryServer: @unchecked Sendable {
     }
 
     func stop() {
-        Diagnostics.log("listener stop requested port=\(port)")
+        Diagnostics.log("listener stop requested port=\(port) mode=\(mode.rawValue)")
         listener?.cancel()
         listener = nil
+
+        queue.async { [weak self] in
+            guard let self else { return }
+
+            let connections = Array(self.activeConnections.values)
+            self.activeConnections.removeAll()
+            connections.forEach { $0.cancel() }
+
+            if !connections.isEmpty {
+                Diagnostics.log("listener cancelled active connections count=\(connections.count)")
+            }
+        }
     }
 
     private func handle(_ connection: NWConnection) {
+        let connectionID = ObjectIdentifier(connection)
+        activeConnections[connectionID] = connection
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .cancelled, .failed:
+                self?.removeConnection(connectionID)
+            default:
+                break
+            }
+        }
         connection.start(queue: queue)
         receiveRequest(on: connection, buffer: Data())
     }
@@ -159,6 +194,19 @@ final class GalleryServer: @unchecked Sendable {
         let rawPath = String(parts[1])
         guard let url = URL(string: rawPath, relativeTo: URL(string: "http://localhost")) else {
             sendError(GalleryServerError.invalidRequest, statusCode: 400, connection: connection)
+            return
+        }
+
+        switch Self.routeDecision(for: url.path, mode: mode) {
+        case .allowed:
+            break
+        case let .redirect(path):
+            Diagnostics.log("route redirect mode=\(mode.rawValue) from=\(url.path) to=\(path)")
+            sendRedirect(to: path, connection: connection)
+            return
+        case .unavailable:
+            Diagnostics.log("route denied mode=\(mode.rawValue) path=\(url.path)")
+            sendRouteUnavailable(path: url.path, connection: connection)
             return
         }
 
@@ -280,7 +328,7 @@ final class GalleryServer: @unchecked Sendable {
 
             if let error {
                 Diagnostics.log("screen stream closed mode=\(context.mode.rawValue) message=\(error.localizedDescription)")
-                connection.cancel()
+                cancelConnection(connection)
                 return
             }
 
@@ -295,9 +343,45 @@ final class GalleryServer: @unchecked Sendable {
                     self.sendScreenStreamFrame(nextFrame, context: context, connection: connection)
                 } catch {
                     self.logScreenError(error)
-                    connection.cancel()
+                    self.cancelConnection(connection)
                 }
             }
+        }
+    }
+
+    static func routeDecision(for path: String, mode: PreviewMode) -> GalleryRouteDecision {
+        switch mode {
+        case .export:
+            if path == "/" || path == "/manifest.json" || path.hasPrefix("/file/") {
+                return .allowed
+            }
+
+            if path == "/screen" {
+                return .redirect("/")
+            }
+
+            if path == "/screen-config.json" || path == "/screen.jpg" || path == "/screen.mjpg" {
+                return .unavailable
+            }
+
+            return .allowed
+        case .screen:
+            if path == "/screen"
+                || path == "/screen-config.json"
+                || path == "/screen.jpg"
+                || path == "/screen.mjpg" {
+                return .allowed
+            }
+
+            if path == "/" {
+                return .redirect("/screen")
+            }
+
+            if path == "/manifest.json" || path.hasPrefix("/file/") {
+                return .unavailable
+            }
+
+            return .allowed
         }
     }
 
@@ -417,20 +501,191 @@ final class GalleryServer: @unchecked Sendable {
         )
     }
 
+    private static func redirectHTML(activeMode: PreviewMode, targetPath: String) -> String {
+        routeMessageHTML(
+            title: "Opening \(activeMode.title)",
+            message: "This preview link belongs to another mode. Live Loupe is opening the active \(activeMode.title) preview.",
+            targetPath: targetPath,
+            buttonTitle: "Open \(activeMode.title)"
+        )
+    }
+
+    private static func routeUnavailableHTML(activeMode: PreviewMode, targetPath: String) -> String {
+        routeMessageHTML(
+            title: "\(activeMode.title) mode is active",
+            message: "This background route is only available in the other preview mode.",
+            targetPath: targetPath,
+            buttonTitle: "Go to \(activeMode.title)"
+        )
+    }
+
+    private static func routeMessageHTML(
+        title: String,
+        message: String,
+        targetPath: String,
+        buttonTitle: String
+    ) -> String {
+        """
+        <!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+          <title>Live Loupe</title>
+          <style>
+            :root {
+              color-scheme: light dark;
+              --bg: #f5f5f7;
+              --card: rgba(255, 255, 255, 0.76);
+              --text: #1d1d1f;
+              --muted: #6e6e73;
+              --line: rgba(0, 0, 0, 0.08);
+              --blue: #007aff;
+            }
+
+            @media (prefers-color-scheme: dark) {
+              :root {
+                --bg: #101012;
+                --card: rgba(44, 44, 46, 0.72);
+                --text: #f5f5f7;
+                --muted: #a1a1a6;
+                --line: rgba(255, 255, 255, 0.14);
+              }
+            }
+
+            * { box-sizing: border-box; }
+
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: grid;
+              place-items: center;
+              padding: 24px;
+              background: var(--bg);
+              color: var(--text);
+              font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+            }
+
+            main {
+              width: min(100%, 380px);
+              padding: 26px;
+              border: 1px solid var(--line);
+              border-radius: 28px;
+              background: var(--card);
+              text-align: center;
+              box-shadow: 0 18px 60px rgba(0, 0, 0, 0.14);
+              backdrop-filter: blur(24px);
+            }
+
+            .icon {
+              width: 54px;
+              height: 54px;
+              margin: 0 auto 18px;
+              display: grid;
+              place-items: center;
+              border-radius: 18px;
+              background: rgba(0, 122, 255, 0.12);
+              color: var(--blue);
+              font-size: 28px;
+              font-weight: 700;
+            }
+
+            h1 {
+              margin: 0;
+              font-size: 26px;
+              line-height: 1.12;
+              letter-spacing: 0;
+            }
+
+            p {
+              margin: 10px 0 22px;
+              color: var(--muted);
+            }
+
+            a {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 44px;
+              padding: 0 18px;
+              border-radius: 14px;
+              background: var(--blue);
+              color: white;
+              font-weight: 700;
+              text-decoration: none;
+            }
+          </style>
+        </head>
+        <body>
+          <main>
+            <div class="icon">&#8599;</div>
+            <h1>\(title.htmlEscaped)</h1>
+            <p>\(message.htmlEscaped)</p>
+            <a href="\(targetPath.htmlAttributeEscaped)">\(buttonTitle.htmlEscaped)</a>
+          </main>
+          <script>
+            window.setTimeout(() => {
+              window.location.replace('\(targetPath.javaScriptStringEscaped)');
+            }, 450);
+          </script>
+        </body>
+        </html>
+        """
+    }
+
+    private func sendRedirect(to path: String, connection: NWConnection) {
+        let body = Data(Self.redirectHTML(activeMode: mode, targetPath: path).utf8)
+        send(
+            data: body,
+            statusCode: 302,
+            reason: HTTPReason.phrase(for: 302),
+            contentType: "text/html; charset=utf-8",
+            cacheControl: "no-store",
+            connection: connection,
+            additionalHeaders: [
+                "Location": path,
+                "X-Live-Loupe-Mode": mode.rawValue,
+                "X-Live-Loupe-Redirect": path
+            ]
+        )
+    }
+
+    private func sendRouteUnavailable(path: String, connection: NWConnection) {
+        let targetPath = mode.path
+        let body = Data(Self.routeUnavailableHTML(activeMode: mode, targetPath: targetPath).utf8)
+        send(
+            data: body,
+            statusCode: 409,
+            reason: HTTPReason.phrase(for: 409),
+            contentType: "text/html; charset=utf-8",
+            cacheControl: "no-store",
+            connection: connection,
+            additionalHeaders: [
+                "X-Live-Loupe-Mode": mode.rawValue,
+                "X-Live-Loupe-Redirect": targetPath
+            ]
+        )
+    }
+
     private func send(
         data: Data,
         statusCode: Int = 200,
         reason: String = "OK",
         contentType: String,
         cacheControl: String,
-        connection: NWConnection
+        connection: NWConnection,
+        additionalHeaders: [String: String] = [:]
     ) {
+        let extraHeaders = additionalHeaders
+            .map { "\($0.key): \($0.value)\r\n" }
+            .joined()
         let header = """
         HTTP/1.1 \(statusCode) \(reason)\r
         Content-Type: \(contentType)\r
         Content-Length: \(data.count)\r
         Cache-Control: \(cacheControl)\r
         Access-Control-Allow-Origin: *\r
+        \(extraHeaders)\
         Connection: close\r
         \r
 
@@ -438,8 +693,8 @@ final class GalleryServer: @unchecked Sendable {
 
         var response = Data(header.utf8)
         response.append(data)
-        connection.send(content: response, completion: .contentProcessed { _ in
-            connection.cancel()
+        connection.send(content: response, completion: .contentProcessed { [weak self] _ in
+            self?.cancelConnection(connection)
         })
     }
 
@@ -452,6 +707,17 @@ final class GalleryServer: @unchecked Sendable {
         connection.send(content: data, isComplete: isComplete, completion: .contentProcessed { error in
             completion?(error)
         })
+    }
+
+    private func cancelConnection(_ connection: NWConnection) {
+        connection.cancel()
+        removeConnection(ObjectIdentifier(connection))
+    }
+
+    private func removeConnection(_ connectionID: ObjectIdentifier) {
+        queue.async { [weak self] in
+            self?.activeConnections.removeValue(forKey: connectionID)
+        }
     }
 
     private func imageEntries() throws -> [ImageEntry] {
@@ -648,12 +914,16 @@ private final class ScreenStreamContext: @unchecked Sendable {
 private enum HTTPReason {
     static func phrase(for statusCode: Int) -> String {
         switch statusCode {
+        case 302:
+            "Found"
         case 400:
             "Bad Request"
         case 404:
             "Not Found"
         case 405:
             "Method Not Allowed"
+        case 409:
+            "Conflict"
         case 500:
             "Internal Server Error"
         case 503:
@@ -670,5 +940,26 @@ private extension String {
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
             .replacingOccurrences(of: "\r", with: "\\r")
+    }
+
+    var htmlEscaped: String {
+        replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+
+    var htmlAttributeEscaped: String {
+        htmlEscaped
+    }
+
+    var javaScriptStringEscaped: String {
+        replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\u{2028}", with: "\\u2028")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
     }
 }

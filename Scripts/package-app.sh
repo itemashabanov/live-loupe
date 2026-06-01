@@ -51,6 +51,17 @@ cat > "$CONTENTS_PATH/Info.plist" <<PLIST
   <string>$DISPLAY_NAME</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>$BUNDLE_ID</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>liveloupe</string>
+      </array>
+    </dict>
+  </array>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>LSApplicationCategoryType</key>

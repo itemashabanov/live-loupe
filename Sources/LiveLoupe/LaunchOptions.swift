@@ -20,6 +20,37 @@ struct LaunchOptions {
         )
     }
 
+    static func from(url: URL) -> LaunchOptions? {
+        guard url.scheme?.lowercased() == "liveloupe" else { return nil }
+
+        let command = (url.host?.isEmpty == false ? url.host : url.path)
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
+            .map { $0.lowercased() }
+
+        guard command == "start" else { return nil }
+
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        var query: [String: String] = [:]
+        for item in components?.queryItems ?? [] {
+            query[item.name] = item.value ?? ""
+        }
+
+        let folderURL = query["folder"].flatMap { value -> URL? in
+            guard !value.isEmpty else { return nil }
+            return URL(fileURLWithPath: value).standardizedFileURL
+        }
+        let port = query["port"].flatMap(Int.init)
+        let mode = query["mode"].flatMap(PreviewMode.init(rawValue:))
+        let shouldStart = query["start"].map(Self.booleanValue) ?? true
+
+        return LaunchOptions(
+            folderURL: folderURL,
+            port: port,
+            previewMode: mode,
+            shouldStartServer: shouldStart
+        )
+    }
+
     private static func value(after flag: String, in arguments: [String]) -> String? {
         guard let index = arguments.firstIndex(of: flag),
               arguments.indices.contains(index + 1) else {
@@ -27,5 +58,14 @@ struct LaunchOptions {
         }
 
         return arguments[index + 1]
+    }
+
+    private static func booleanValue(_ value: String) -> Bool {
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "1", "true", "yes", "y", "on":
+            true
+        default:
+            false
+        }
     }
 }
